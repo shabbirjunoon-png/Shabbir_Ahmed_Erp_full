@@ -38,3 +38,8 @@ externalPort = 80
 deploymentTarget = "autoscale"
 run = ["python3", "shabbir-erp-main/serve.py"]
 build = ["bash", "shabbir-erp-main/start_build.sh"]
+
+[userenv]
+
+[userenv.shared]
+SUPABASE_URL = "https://ikadfsikkfslnystotxr.supabase.co"

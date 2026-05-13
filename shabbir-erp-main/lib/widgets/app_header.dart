@@ -1,6 +1,4 @@
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../constants/app_colors.dart';
 
@@ -30,150 +28,144 @@ class ShabbirLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<Uint8List>(
-      future: rootBundle.load('assets/logo.png').then((d) => d.buffer.asUint8List()),
-      builder: (context, snapshot) {
-        if (snapshot.hasData) {
-          return Image.memory(
-            snapshot.data!,
-            width: size,
-            height: size,
-            fit: BoxFit.contain,
-          );
-        }
-        return SizedBox(width: size, height: size);
-      },
+    return CustomPaint(
+      size: Size(size, size),
+      painter: _GoldShieldPainter(size: size),
     );
   }
 }
 
-class _ShieldLogoPainter extends CustomPainter {
-  final Color bgColor;
-  final Color textColor;
+class _GoldShieldPainter extends CustomPainter {
   final double size;
+  const _GoldShieldPainter({required this.size});
 
-  _ShieldLogoPainter({
-    required this.bgColor,
-    required this.textColor,
-    required this.size,
-  });
+  static const _navy = AppColors.primary;      // #1E1B4B
+  static const _gold = AppColors.accent;       // #F59E0B
+  static const _goldLight = Color(0xFFFFD166); // lighter gold highlight
+  static const _goldDark = Color(0xFFB45309);  // darker gold shadow
+
+  Path _shieldPath(double w, double h) {
+    final p = Path();
+    // Classic pointed-bottom shield
+    p.moveTo(w * 0.50, h * 0.03);
+    p.lineTo(w * 0.96, h * 0.20);
+    p.lineTo(w * 0.96, h * 0.56);
+    p.cubicTo(w * 0.96, h * 0.80, w * 0.75, h * 0.93, w * 0.50, h * 0.99);
+    p.cubicTo(w * 0.25, h * 0.93, w * 0.04, h * 0.80, w * 0.04, h * 0.56);
+    p.lineTo(w * 0.04, h * 0.20);
+    p.close();
+    return p;
+  }
 
   @override
-  void paint(Canvas canvas, Size canvasSize) {
-    final w = canvasSize.width;
-    final h = canvasSize.height;
-
-    // Shield path
-    final path = Path();
-    path.moveTo(w * 0.5, 0);
-    path.lineTo(w * 0.95, h * 0.18);
-    path.lineTo(w * 0.95, h * 0.55);
-    path.cubicTo(w * 0.95, h * 0.82, w * 0.72, h * 0.95, w * 0.5, h);
-    path.cubicTo(w * 0.28, h * 0.95, w * 0.05, h * 0.82, w * 0.05, h * 0.55);
-    path.lineTo(w * 0.05, h * 0.18);
-    path.close();
-
-    // Outer shield shadow/border (metallic depth)
-    final borderPaint = Paint()
-      ..color = AppColors.accent.withOpacity(0.35)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.outer, 4);
-    canvas.drawPath(path, borderPaint);
-
-    // Main shield fill — gradient (navy deep to slightly lighter)
-    final gradient = LinearGradient(
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
-      colors: [
-        bgColor,
-        Color.lerp(bgColor, Colors.white, 0.12)!,
-        bgColor,
-      ],
-      stops: const [0.0, 0.5, 1.0],
-    );
+  void paint(Canvas canvas, Size s) {
+    final w = s.width;
+    final h = s.height;
+    final shield = _shieldPath(w, h);
     final rect = Rect.fromLTWH(0, 0, w, h);
-    final fillPaint = Paint()
-      ..shader = gradient.createShader(rect)
-      ..style = PaintingStyle.fill;
-    canvas.drawPath(path, fillPaint);
 
-    // Metallic border ring
-    final strokePaint = Paint()
-      ..color = AppColors.accent.withOpacity(0.75)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = w * 0.04;
-    canvas.drawPath(path, strokePaint);
+    // ── Drop shadow ──────────────────────────────────────────────────────────
+    canvas.drawPath(
+      shield.shift(const Offset(0, 2)),
+      Paint()
+        ..color = _goldDark.withOpacity(0.30)
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, w * 0.06),
+    );
 
-    // Inner highlight line (3D emboss feel)
-    final innerPath = Path();
-    final inset = w * 0.08;
-    innerPath.moveTo(w * 0.5, inset * 0.6);
-    innerPath.lineTo(w - inset, h * 0.22);
-    innerPath.lineTo(w - inset, h * 0.53);
-    innerPath.cubicTo(w - inset, h * 0.78, w * 0.7, h * 0.9, w * 0.5, h * 0.94);
-    innerPath.cubicTo(w * 0.3, h * 0.9, inset, h * 0.78, inset, h * 0.53);
-    innerPath.lineTo(inset, h * 0.22);
-    innerPath.close();
-    final innerPaint = Paint()
-      ..color = Colors.white.withOpacity(0.06)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = w * 0.02;
-    canvas.drawPath(innerPath, innerPaint);
+    // ── Navy fill with subtle gradient ───────────────────────────────────────
+    canvas.drawPath(
+      shield,
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            const Color(0xFF2D2A6E),
+            _navy,
+            const Color(0xFF13114A),
+          ],
+          stops: const [0.0, 0.5, 1.0],
+        ).createShader(rect),
+    );
 
-    // Bar chart icon (bottom portion of shield)
-    final barPaint = Paint()
-      ..color = AppColors.accent.withOpacity(0.45)
-      ..style = PaintingStyle.fill;
-    final barW = w * 0.08;
-    final barBottomY = h * 0.80;
-    final barData = [0.25, 0.45, 0.35];
-    final barStartX = w * 0.27;
-    final barGap = w * 0.12;
-    for (int i = 0; i < barData.length; i++) {
-      final bh = h * 0.28 * barData[i];
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromLTWH(barStartX + i * (barW + barGap), barBottomY - bh, barW, bh),
-          const Radius.circular(2),
-        ),
-        barPaint,
-      );
-    }
+    // ── Gold outer border ────────────────────────────────────────────────────
+    canvas.drawPath(
+      shield,
+      Paint()
+        ..color = _gold
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = w * 0.055,
+    );
 
-    // "SA" monogram — intertwined initials
-    // Draw "S" slightly left, "A" slightly right, overlapping in the center
-    final sPainter = TextPainter(
+    // ── Inner gold divider line (horizontal, upper-third) ────────────────────
+    final divY = h * 0.34;
+    canvas.drawLine(
+      Offset(w * 0.12, divY),
+      Offset(w * 0.88, divY),
+      Paint()
+        ..color = _gold.withOpacity(0.55)
+        ..strokeWidth = w * 0.022,
+    );
+
+    // ── "S" initial (left, gold) ─────────────────────────────────────────────
+    final stp = TextPainter(
       text: TextSpan(
         text: 'S',
         style: GoogleFonts.inter(
           fontWeight: FontWeight.w900,
-          fontSize: w * 0.36,
-          color: textColor.withOpacity(0.95),
+          fontSize: w * 0.33,
+          color: _goldLight,
           height: 1,
         ),
       ),
       textDirection: TextDirection.ltr,
-    );
-    sPainter.layout();
-    sPainter.paint(canvas, Offset(w * 0.11, h * 0.22));
+    )..layout();
+    stp.paint(canvas, Offset(w * 0.08, divY + h * 0.04));
 
-    final aPainter = TextPainter(
+    // ── "A" initial (right, slightly offset, contrasting) ────────────────────
+    final atp = TextPainter(
       text: TextSpan(
         text: 'A',
         style: GoogleFonts.inter(
           fontWeight: FontWeight.w900,
-          fontSize: w * 0.32,
-          color: AppColors.accent.withOpacity(0.80),
+          fontSize: w * 0.30,
+          color: Colors.white.withOpacity(0.92),
           height: 1,
         ),
       ),
       textDirection: TextDirection.ltr,
+    )..layout();
+    atp.paint(canvas, Offset(w * 0.52, divY + h * 0.05));
+
+    // ── Small gold gear dot at bottom-center ─────────────────────────────────
+    final cx = w * 0.50;
+    final cy = h * 0.88;
+    final r = w * 0.06;
+    canvas.drawCircle(Offset(cx, cy), r, Paint()..color = _gold);
+    canvas.drawCircle(
+      Offset(cx, cy),
+      r * 0.52,
+      Paint()..color = _navy,
     );
-    aPainter.layout();
-    aPainter.paint(canvas, Offset(w * 0.42, h * 0.24));
+
+    // ── Top crown / chevron ───────────────────────────────────────────────────
+    final crown = Path()
+      ..moveTo(w * 0.30, h * 0.18)
+      ..lineTo(w * 0.50, h * 0.07)
+      ..lineTo(w * 0.70, h * 0.18);
+    canvas.drawPath(
+      crown,
+      Paint()
+        ..color = _gold
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = w * 0.038
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round,
+    );
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant CustomPainter old) => false;
 }
 
 class AppHeader extends StatelessWidget implements PreferredSizeWidget {

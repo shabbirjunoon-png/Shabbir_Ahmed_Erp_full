@@ -52,10 +52,12 @@ class SupabaseService {
 
   Stream<AuthState> get authStateChanges => _client.auth.onAuthStateChange;
 
+  static const _androidRedirect = 'com.shabbir.erp://login-callback/';
+
   Future<void> signInWithGoogle() async {
     await _client.auth.signInWithOAuth(
       OAuthProvider.google,
-      redirectTo: kIsWeb ? _redirectUrl() : null,
+      redirectTo: kIsWeb ? _webRedirectUrl() : _androidRedirect,
       authScreenLaunchMode: LaunchMode.platformDefault,
     );
   }
@@ -63,7 +65,7 @@ class SupabaseService {
   Future<void> signInWithFacebook() async {
     await _client.auth.signInWithOAuth(
       OAuthProvider.facebook,
-      redirectTo: kIsWeb ? _redirectUrl() : null,
+      redirectTo: kIsWeb ? _webRedirectUrl() : _androidRedirect,
       authScreenLaunchMode: LaunchMode.platformDefault,
     );
   }
@@ -72,12 +74,9 @@ class SupabaseService {
     await _client.auth.signOut();
   }
 
-  String _redirectUrl() {
-    if (kIsWeb) {
-      final uri = Uri.base;
-      return '${uri.scheme}://${uri.host}${uri.port != 80 && uri.port != 443 ? ':${uri.port}' : ''}/';
-    }
-    return '$_supabaseUrl/auth/v1/callback';
+  String _webRedirectUrl() {
+    final uri = Uri.base;
+    return '${uri.scheme}://${uri.host}${uri.port != 80 && uri.port != 443 ? ':${uri.port}' : ''}/';
   }
 
   // ── Parties ──────────────────────────────────────────────────────────────

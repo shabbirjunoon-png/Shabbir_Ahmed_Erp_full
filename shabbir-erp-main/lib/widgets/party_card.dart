@@ -24,27 +24,52 @@ class PartyCard extends StatelessWidget {
       onLongPress: onLongPress,
       child: Container(
         padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.border), boxShadow: [AppColors.cardShadow]),
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.border),
+          boxShadow: [AppColors.cardShadow],
+        ),
         child: Row(
           children: [
-            Container(width: 44, height: 44, decoration: BoxDecoration(color: avatarColor, shape: BoxShape.circle), child: Center(child: Text(initial, style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 18, color: Colors.white)))),
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(color: avatarColor, shape: BoxShape.circle),
+              child: Center(
+                child: Text(
+                  initial,
+                  style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 22, color: Colors.white),
+                ),
+              ),
+            ),
             const SizedBox(width: 14),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(party.name, style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 15.5, letterSpacing: -0.2, color: AppColors.foreground), maxLines: 1, overflow: TextOverflow.ellipsis),
-              const SizedBox(height: 4),
-              Row(children: [
-                Icon(party.type == 'Customer' ? Icons.person_outline : Icons.local_shipping_outlined, size: 11, color: AppColors.mutedForeground),
-                const SizedBox(width: 4),
-                Text(party.type, style: GoogleFonts.inter(fontWeight: FontWeight.w500, fontSize: 12, color: AppColors.mutedForeground)),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(
+                  party.name,
+                  style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 17, letterSpacing: -0.3, color: AppColors.foreground),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 5),
+                Row(children: [
+                  Icon(party.type == 'Customer' ? Icons.person_outline : Icons.local_shipping_outlined, size: 12, color: AppColors.mutedForeground),
+                  const SizedBox(width: 4),
+                  Text(party.type, style: GoogleFonts.inter(fontWeight: FontWeight.w500, fontSize: 12.5, color: AppColors.mutedForeground)),
+                ]),
               ]),
-            ])),
+            ),
             Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-              Text(formatCurrency(party.balance.abs()), style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 15, color: AppColors.foreground)),
+              Text(
+                formatCurrency(party.balance.abs()),
+                style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 17, color: AppColors.foreground),
+              ),
               const SizedBox(height: 6),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                 decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)),
-                child: Text(meta.label.toUpperCase(), style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 10.5, letterSpacing: 0.3, color: fg)),
+                child: Text(meta.label.toUpperCase(), style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 10.5, letterSpacing: 0.3, color: fg)),
               ),
             ]),
             if (onMenuPress != null) ...[

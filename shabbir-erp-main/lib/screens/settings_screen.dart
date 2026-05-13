@@ -7,6 +7,7 @@ import '../constants/app_colors.dart';
 import '../providers/erp_provider.dart';
 import '../services/backup_service.dart';
 import '../services/github_gist_service.dart';
+import '../services/locale_service.dart';
 import '../services/security_service.dart';
 import '../widgets/app_header.dart';
 import 'pattern_lock_screen.dart';
@@ -15,10 +16,10 @@ class SettingsScreen extends StatefulWidget {
   final VoidCallback onLogout;
   const SettingsScreen({super.key, required this.onLogout});
   @override
-  State<SettingsScreen> createState() => _SettingsScreenState();
+  State<SettingsScreen> createState() => SettingsScreenState();
 }
 
-class _SettingsScreenState extends State<SettingsScreen> {
+class SettingsScreenState extends State<SettingsScreen> {  // ignore: library_private_types_in_public_api
   bool _patternEnabled = false;
   bool _loadingBackupLocal = false;
   bool _loadingRestoreLocal = false;
@@ -386,6 +387,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // ── Build ──────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
+    final locale = context.watch<LocaleService>();
+    final isUrdu = locale.isUrdu;
+
     final initials = _offlineName.trim().isNotEmpty
         ? _offlineName.trim().split(' ').map((w) => w.isNotEmpty ? w[0].toUpperCase() : '').take(2).join()
         : 'U';
@@ -393,7 +397,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Column(children: [
-        const AppHeader(title: 'Settings', subtitle: 'Account, security & data'),
+        AppHeader(
+          title: isUrdu ? 'ترتیبات' : 'Settings',
+          subtitle: isUrdu ? 'اکاؤنٹ، سیکیورٹی اور ڈیٹا' : 'Account, security & data',
+        ),
         Expanded(child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 48),
           children: [
@@ -411,15 +418,43 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   const Icon(Icons.warning_amber_rounded, color: Color(0xFFEA580C), size: 20),
                   const SizedBox(width: 10),
                   Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text('Backup lena zaruri hai!', style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 13, color: const Color(0xFF9A3412))),
-                    Text('3+ din se backup nahi liya. "Device pe Backup" tap karo.', style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFFC2410C), height: 1.4)),
+                    Text(isUrdu ? 'بیک اپ لینا ضروری ہے!' : 'Backup lena zaruri hai!', style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 13, color: const Color(0xFF9A3412))),
+                    Text(isUrdu ? '3+ دن سے بیک اپ نہیں لیا' : '3+ din se backup nahi liya. "Device pe Backup" tap karo.', style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFFC2410C), height: 1.4)),
                   ])),
                 ]),
               ),
             ],
 
+            // ── Language Toggle ──
+            _SectionLabel(isUrdu ? 'زبان' : 'Language'),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(18), border: Border.all(color: AppColors.border), boxShadow: [AppColors.cardShadow]),
+              child: Row(children: [
+                Container(
+                  width: 44, height: 44,
+                  decoration: BoxDecoration(color: AppColors.secondary, borderRadius: BorderRadius.circular(12)),
+                  child: const Center(child: Text('🌐', style: TextStyle(fontSize: 22))),
+                ),
+                const SizedBox(width: 14),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(isUrdu ? 'اردو / English' : 'English / اردو', style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 15, color: AppColors.foreground)),
+                  Text(isUrdu ? 'ابھی: اردو' : 'Current: English', style: GoogleFonts.inter(fontSize: 12, color: AppColors.mutedForeground)),
+                ])),
+                GestureDetector(
+                  onTap: () => locale.toggle(),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(10)),
+                    child: Text(isUrdu ? 'English' : 'اردو', style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 13, color: Colors.white)),
+                  ),
+                ),
+              ]),
+            ),
+            const SizedBox(height: 24),
+
             // ── Account Card ──
-            _SectionLabel('Account'),
+            _SectionLabel(isUrdu ? 'اکاؤنٹ' : 'Account'),
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(18), border: Border.all(color: AppColors.border), boxShadow: [AppColors.cardShadow]),
@@ -432,7 +467,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const SizedBox(width: 14),
                 Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text(_offlineName, style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 16, color: AppColors.foreground)),
-                  Text('Offline Mode — data sirf is device par', style: GoogleFonts.inter(fontWeight: FontWeight.w400, fontSize: 11.5, color: AppColors.mutedForeground, height: 1.4)),
+                  Text(isUrdu ? 'آف لائن موڈ — ڈیٹا صرف اس ڈیوائس پر' : 'Offline Mode — data sirf is device par', style: GoogleFonts.inter(fontWeight: FontWeight.w400, fontSize: 11.5, color: AppColors.mutedForeground, height: 1.4)),
                 ])),
                 GestureDetector(
                   onTap: _editName,
@@ -442,7 +477,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     child: Row(mainAxisSize: MainAxisSize.min, children: [
                       const Icon(Icons.edit_outlined, size: 14, color: AppColors.primary),
                       const SizedBox(width: 4),
-                      Text('Edit', style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 12, color: AppColors.primary)),
+                      Text(isUrdu ? 'ترمیم' : 'Edit', style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 12, color: AppColors.primary)),
                     ]),
                   ),
                 ),
@@ -451,13 +486,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 24),
 
             // ── Security ──
-            _SectionLabel('Security'),
-            _Tile(icon: Icons.grid_view_outlined, title: 'Pattern Lock', subtitle: _patternEnabled ? 'Chalu hai — band karne ke liye tap karo' : 'Band hai — chalane ke liye tap karo', trailing: Switch(value: _patternEnabled, onChanged: (_) => _togglePattern(), activeColor: AppColors.primary)),
-            if (_patternEnabled) _Tile(icon: Icons.refresh_outlined, title: 'Pattern Tabdeel Karo', subtitle: 'Naya unlock pattern banao', onTap: _changePattern),
+            _SectionLabel(isUrdu ? 'سیکیورٹی' : 'Security'),
+            _Tile(
+              icon: Icons.grid_view_outlined,
+              title: isUrdu ? 'پیٹرن لاک' : 'Pattern Lock',
+              subtitle: _patternEnabled
+                  ? (isUrdu ? 'چالو ہے — بند کرنے کے لیے ٹیپ کریں' : 'Chalu hai — band karne ke liye tap karo')
+                  : (isUrdu ? 'بند ہے — چالو کرنے کے لیے ٹیپ کریں' : 'Band hai — chalane ke liye tap karo'),
+              trailing: Switch(value: _patternEnabled, onChanged: (_) => _togglePattern(), activeColor: AppColors.primary),
+            ),
+            if (_patternEnabled) _Tile(
+              icon: Icons.refresh_outlined,
+              title: isUrdu ? 'پیٹرن تبدیل کریں' : 'Pattern Tabdeel Karo',
+              subtitle: isUrdu ? 'نیا انلاک پیٹرن بنائیں' : 'Naya unlock pattern banao',
+              onTap: _changePattern,
+            ),
             const SizedBox(height: 24),
 
             // ── Local Backup ──
-            _SectionLabel('Local Backup (Device)'),
+            _SectionLabel(isUrdu ? 'مقامی بیک اپ' : 'Local Backup (Device)'),
             Container(
               margin: const EdgeInsets.only(bottom: 10),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -470,53 +517,76 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const Icon(Icons.history, size: 15, color: AppColors.primary),
                 const SizedBox(width: 8),
                 Expanded(child: Text(
-                  'Aakhri backup: ${_formatBackupDate(_lastBackupDate)}',
+                  '${isUrdu ? "آخری بیک اپ" : "Aakhri backup"}: ${_formatBackupDate(_lastBackupDate)}',
                   style: GoogleFonts.inter(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w500),
                 )),
                 if (_backupNeeded)
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(color: const Color(0xFFEA580C), borderRadius: BorderRadius.circular(6)),
-                    child: Text('Zaruri', style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.white)),
+                    child: Text(isUrdu ? 'ضروری' : 'Zaruri!', style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.white)),
                   ),
               ]),
             ),
-            _Tile(icon: Icons.phone_android_outlined, title: 'Device pe Backup', subtitle: 'JSON file (aaj ki date ke saath) download karo', loading: _loadingBackupLocal, onTap: _backupLocal),
-            _Tile(icon: Icons.folder_open_outlined, title: 'Device se Restore', subtitle: 'Ek ya zyada backup files select karo (merge ya replace)', loading: _loadingRestoreLocal, onTap: _restoreLocal),
+            _Tile(icon: Icons.upload_outlined, title: isUrdu ? 'ڈیوائس پر بیک اپ' : 'Device pe Backup', subtitle: isUrdu ? 'JSON فائل ڈاؤن لوڈ کریں' : 'JSON file download karo', loading: _loadingBackupLocal, onTap: _backupLocal),
+            _Tile(icon: Icons.download_outlined, title: isUrdu ? 'ڈیوائس سے ریسٹور' : 'Device se Restore', subtitle: isUrdu ? 'JSON فائل سے ڈیٹا واپس لائیں' : 'JSON file se data wapas lao', loading: _loadingRestoreLocal, onTap: _restoreLocal),
             const SizedBox(height: 24),
 
-            // ── Online Backup ──
-            _SectionLabel('Online Backup (GitHub Gist)'),
-            Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.all(13),
-              decoration: BoxDecoration(color: AppColors.accent.withOpacity(0.08), borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.accent.withOpacity(0.25))),
-              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Icon(Icons.cloud_outlined, size: 16, color: AppColors.accent),
-                const SizedBox(width: 10),
-                Expanded(child: Text(
-                  _savedGistId.isNotEmpty
-                    ? 'Aakhri backup Gist: $_savedGistId'
-                    : 'GitHub account se free online backup. Phone kho jaye ya delete ho — phir bhi data milega.',
-                  style: GoogleFonts.inter(fontSize: 12, color: AppColors.foreground, height: 1.5),
-                )),
-              ]),
-            ),
-            _Tile(icon: Icons.cloud_upload_outlined, title: 'Online Backup Karo', subtitle: 'GitHub Gist mein data save karo (free)', loading: _loadingGistBackup, onTap: _gistBackup),
-            _Tile(icon: Icons.cloud_download_outlined, title: 'Online se Restore Karo', subtitle: 'GitHub Gist se data wapas lao (merge ya replace)', loading: _loadingGistRestore, onTap: _gistRestore),
+            // ── GitHub Gist Backup ──
+            _SectionLabel(isUrdu ? 'آن لائن بیک اپ (GitHub Gist)' : 'Online Backup (GitHub Gist)'),
+            _Tile(icon: Icons.cloud_upload_outlined, title: isUrdu ? 'آن لائن بیک اپ' : 'Online Backup', subtitle: isUrdu ? 'GitHub Gist پر محفوظ کریں' : 'GitHub Gist par save karo', loading: _loadingGistBackup, onTap: _gistBackup),
+            _Tile(icon: Icons.cloud_download_outlined, title: isUrdu ? 'آن لائن سے ریسٹور' : 'Online se Restore', subtitle: isUrdu ? 'Gist ID سے ڈیٹا واپس لائیں' : 'Gist ID se data wapas lao', loading: _loadingGistRestore, onTap: _gistRestore),
             const SizedBox(height: 24),
 
-            // ── Account Actions ──
-            _SectionLabel('Account'),
-            _Tile(icon: Icons.logout, title: 'Sign Out', subtitle: 'Login screen par wapas jao', destructive: true, loading: _loadingLogout, onTap: _logout),
-            const SizedBox(height: 36),
-            _SectionLabel('About'),
-            _Tile(icon: Icons.info_outline, title: 'About Shabbir ERP', subtitle: 'Powered by Shabbir Ahmed. AI-generated.', onTap: () => _showAboutDialog(context)),
-            const SizedBox(height: 12),
-            Center(child: Text('Shabbir ERP  v1.0.0', style: GoogleFonts.inter(fontWeight: FontWeight.w500, fontSize: 12, color: AppColors.mutedForeground))),
+            // ── App ──
+            _SectionLabel(isUrdu ? 'ایپ' : 'App'),
+            _Tile(icon: Icons.info_outline, title: isUrdu ? 'بارے میں' : 'About', subtitle: 'Shabbir ERP v1.0', onTap: () => _showAboutDialog(context)),
+            const SizedBox(height: 8),
+            _Tile(icon: Icons.logout, title: isUrdu ? 'سائن آؤٹ' : 'Sign Out', subtitle: isUrdu ? 'لاگ آؤٹ کریں' : 'Logout karo', loading: _loadingLogout, onTap: _logout, destructive: true),
           ],
         )),
       ]),
+    );
+  }
+}
+
+class _SectionLabel extends StatelessWidget {
+  final String label;
+  const _SectionLabel(this.label);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Text(label, style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 12, letterSpacing: 0.5, color: AppColors.mutedForeground)),
+    );
+  }
+}
+
+class _Tile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Widget? trailing;
+  final VoidCallback? onTap;
+  final bool loading;
+  final bool destructive;
+
+  const _Tile({required this.icon, required this.title, required this.subtitle, this.trailing, this.onTap, this.loading = false, this.destructive = false});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.border), boxShadow: [AppColors.cardShadow]),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+        leading: Container(width: 38, height: 38, decoration: BoxDecoration(color: destructive ? const Color(0xFFFEE2E2) : AppColors.secondary, borderRadius: BorderRadius.circular(10)), child: Icon(icon, size: 18, color: destructive ? AppColors.destructive : AppColors.primary)),
+        title: Text(title, style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 14, color: destructive ? AppColors.destructive : AppColors.foreground)),
+        subtitle: Text(subtitle, style: GoogleFonts.inter(fontSize: 11.5, color: AppColors.mutedForeground)),
+        trailing: loading ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary)) : (trailing ?? (onTap != null ? const Icon(Icons.chevron_right, size: 18, color: AppColors.mutedForeground) : null)),
+        onTap: loading ? null : onTap,
+      ),
     );
   }
 }
@@ -537,81 +607,19 @@ class _RestoreOptionCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.06),
+          color: color.withOpacity(0.05),
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: color.withOpacity(0.3)),
         ),
         child: Row(children: [
-          Container(
-            width: 40, height: 40,
-            decoration: BoxDecoration(color: color.withOpacity(0.12), borderRadius: BorderRadius.circular(10)),
-            child: Icon(icon, size: 20, color: color),
-          ),
+          Container(width: 38, height: 38, decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(10)), child: Icon(icon, size: 18, color: color)),
           const SizedBox(width: 12),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(title, style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.foreground)),
-            const SizedBox(height: 2),
-            Text(subtitle, style: GoogleFonts.inter(fontSize: 12, color: AppColors.mutedForeground, height: 1.4)),
+            Text(title, style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 13, color: AppColors.foreground)),
+            Text(subtitle, style: GoogleFonts.inter(fontSize: 11.5, color: AppColors.mutedForeground, height: 1.4)),
           ])),
-          Icon(Icons.chevron_right, color: color, size: 20),
+          Icon(Icons.chevron_right, size: 16, color: color),
         ]),
-      ),
-    );
-  }
-}
-
-class _SectionLabel extends StatelessWidget {
-  final String label;
-  const _SectionLabel(this.label);
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 8),
-    child: Text(label.toUpperCase(), style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 11, color: AppColors.mutedForeground, letterSpacing: 0.8)),
-  );
-}
-
-class _Tile extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final Widget? trailing;
-  final VoidCallback? onTap;
-  final bool destructive;
-  final bool loading;
-  final bool dimmed;
-
-  const _Tile({required this.icon, required this.title, required this.subtitle, this.trailing, this.onTap, this.destructive = false, this.loading = false, this.dimmed = false});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Opacity(
-        opacity: dimmed ? 0.5 : 1.0,
-        child: GestureDetector(
-          onTap: loading ? null : onTap,
-          child: Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.border), boxShadow: [AppColors.cardShadow]),
-            child: Row(children: [
-              Container(
-                width: 40, height: 40,
-                decoration: BoxDecoration(color: destructive ? const Color(0xFFFEE2E2) : AppColors.secondary, borderRadius: BorderRadius.circular(11)),
-                child: loading
-                    ? Padding(padding: const EdgeInsets.all(10), child: CircularProgressIndicator(strokeWidth: 2, color: destructive ? AppColors.destructive : AppColors.primary))
-                    : Icon(icon, size: 18, color: destructive ? AppColors.destructive : AppColors.primary),
-              ),
-              const SizedBox(width: 14),
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(title, style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 14, color: destructive ? AppColors.destructive : AppColors.foreground)),
-                const SizedBox(height: 2),
-                Text(subtitle, style: GoogleFonts.inter(fontSize: 12, color: AppColors.mutedForeground, height: 1.4)),
-              ])),
-              if (trailing != null) trailing!
-              else if (!loading && onTap != null) Icon(Icons.chevron_right, size: 18, color: AppColors.mutedForeground),
-            ]),
-          ),
-        ),
       ),
     );
   }

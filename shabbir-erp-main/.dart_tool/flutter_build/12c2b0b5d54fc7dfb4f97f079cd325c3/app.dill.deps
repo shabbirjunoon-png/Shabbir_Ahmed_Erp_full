@@ -1491,6 +1491,7 @@ file:///home/runner/workspace/shabbir-erp-main/lib/screens/new_transaction_sheet
 file:///home/runner/workspace/shabbir-erp-main/lib/screens/parties_screen.dart
 file:///home/runner/workspace/shabbir-erp-main/lib/screens/party_detail_screen.dart
 file:///home/runner/workspace/shabbir-erp-main/lib/screens/pattern_lock_screen.dart
+file:///home/runner/workspace/shabbir-erp-main/lib/screens/pdf_preview_screen.dart
 file:///home/runner/workspace/shabbir-erp-main/lib/screens/reports_screen.dart
 file:///home/runner/workspace/shabbir-erp-main/lib/screens/settings_screen.dart
 file:///home/runner/workspace/shabbir-erp-main/lib/screens/trial_balance_screen.dart
@@ -1498,6 +1499,7 @@ file:///home/runner/workspace/shabbir-erp-main/lib/services/auth_service.dart
 file:///home/runner/workspace/shabbir-erp-main/lib/services/backup_service.dart
 file:///home/runner/workspace/shabbir-erp-main/lib/services/database_service.dart
 file:///home/runner/workspace/shabbir-erp-main/lib/services/github_gist_service.dart
+file:///home/runner/workspace/shabbir-erp-main/lib/services/locale_service.dart
 file:///home/runner/workspace/shabbir-erp-main/lib/services/native_backup_stub.dart
 file:///home/runner/workspace/shabbir-erp-main/lib/services/native_restore_stub.dart
 file:///home/runner/workspace/shabbir-erp-main/lib/services/pdf_service.dart

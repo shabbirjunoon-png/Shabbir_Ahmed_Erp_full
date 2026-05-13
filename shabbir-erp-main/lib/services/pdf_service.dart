@@ -11,23 +11,14 @@ import 'native_backup_stub.dart'
 
 class PdfService {
   static final PdfColor _primary = PdfColor.fromHex('#1E1B4B');
-  static final PdfColor _accent = PdfColor.fromHex('#FBBF24');
-  static final PdfColor _muted = PdfColor.fromHex('#64748B');
-  static final PdfColor _border = PdfColor.fromHex('#E2E8F0');
-  static final PdfColor _bg = PdfColor.fromHex('#F8FAFC');
+  static final PdfColor _accent = PdfColor.fromHex('#F59E0B');
+  static final PdfColor _muted = PdfColor.fromHex('#78716C');
+  static final PdfColor _border = PdfColor.fromHex('#FDE68A');
+  static final PdfColor _bg = PdfColor.fromHex('#FFFBEB');
   static final PdfColor _success = PdfColor.fromHex('#16A34A');
   static final PdfColor _destructive = PdfColor.fromHex('#DC2626');
 
-  static Future<void> _saveThenShare(pw.Document doc, String filename) async {
-    final bytes = await doc.save();
-    if (kIsWeb) {
-      triggerWebDownload(bytes, filename);
-      return;
-    }
-    await nativeBackup(bytes, filename);
-  }
-
-  static Future<void> generateLedger({
+  static Future<List<int>> _buildLedgerBytes({
     required Party party,
     required List<Transaction> transactions,
     required DateTime startDate,
@@ -60,8 +51,49 @@ class PdfService {
       ],
     ));
 
+    return await doc.save();
+  }
+
+  static Future<List<int>> buildLedgerBytes({
+    required Party party,
+    required List<Transaction> transactions,
+    required DateTime startDate,
+    required DateTime endDate,
+    required double openingBefore,
+    required String? Function(String?) itemNameById,
+  }) async {
+    return _buildLedgerBytes(
+      party: party,
+      transactions: transactions,
+      startDate: startDate,
+      endDate: endDate,
+      openingBefore: openingBefore,
+      itemNameById: itemNameById,
+    );
+  }
+
+  static Future<void> generateLedger({
+    required Party party,
+    required List<Transaction> transactions,
+    required DateTime startDate,
+    required DateTime endDate,
+    required double openingBefore,
+    required String? Function(String?) itemNameById,
+  }) async {
+    final bytes = await _buildLedgerBytes(
+      party: party,
+      transactions: transactions,
+      startDate: startDate,
+      endDate: endDate,
+      openingBefore: openingBefore,
+      itemNameById: itemNameById,
+    );
     final safeName = party.name.replaceAll(' ', '_');
-    await _saveThenShare(doc, 'ledger_$safeName.pdf');
+    if (kIsWeb) {
+      triggerWebDownload(bytes, 'ledger_$safeName.pdf');
+    } else {
+      await nativeBackup(bytes, 'ledger_$safeName.pdf');
+    }
   }
 
   static Future<void> generateTrialBalance({
@@ -194,7 +226,12 @@ class PdfService {
       ],
     ));
 
-    await _saveThenShare(doc, 'trial_balance.pdf');
+    final bytes = await doc.save();
+    if (kIsWeb) {
+      triggerWebDownload(bytes, 'trial_balance.pdf');
+    } else {
+      await nativeBackup(bytes, 'trial_balance.pdf');
+    }
   }
 
   static pw.Widget _buildHeader(
@@ -312,11 +349,11 @@ class PdfService {
     return pw.Table(
       border: pw.TableBorder.all(color: _border, width: 0.5),
       columnWidths: {
-        0: const pw.FlexColumnWidth(1.5),
-        1: const pw.FlexColumnWidth(1.5),
-        2: const pw.FlexColumnWidth(2),
-        3: const pw.FlexColumnWidth(2),
-        4: const pw.FlexColumnWidth(2),
+        0: const pw.FlexColumnWidth(1.4),
+        1: const pw.FlexColumnWidth(1.3),
+        2: const pw.FlexColumnWidth(2.3),
+        3: const pw.FlexColumnWidth(1.8),
+        4: const pw.FlexColumnWidth(1.8),
       },
       children: [
         pw.TableRow(
@@ -324,7 +361,7 @@ class PdfService {
           children: [
             _th('Date'),
             _th('Type'),
-            _th('Item'),
+            _th('Description'),
             _th('Amount', align: pw.TextAlign.right),
             _th('Balance', align: pw.TextAlign.right),
           ],
@@ -333,8 +370,8 @@ class PdfService {
           decoration: pw.BoxDecoration(color: _bg),
           children: [
             _td(''),
+            _td('Opening'),
             _td('Opening Balance'),
-            _td(''),
             _td(''),
             _td(formatCurrency(opening), align: pw.TextAlign.right)
           ],
@@ -344,10 +381,16 @@ class PdfService {
           else if (tx.type == 'Receipt') running -= tx.total;
           else if (tx.type == 'Purchase') running -= tx.total;
           else if (tx.type == 'Payment') running += tx.total;
+
+          final itemName = nameById(tx.itemId);
+          final description = tx.remarks.isNotEmpty
+              ? tx.remarks
+              : (itemName != null && itemName.isNotEmpty ? itemName : tx.type);
+
           return pw.TableRow(children: [
             _td(formatDateDisplay(tx.date)),
             _td(tx.type),
-            _td(nameById(tx.itemId) ?? ''),
+            _td(description),
             _td(formatCurrency(tx.total), align: pw.TextAlign.right),
             _td(formatCurrency(running), align: pw.TextAlign.right),
           ]);

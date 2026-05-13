@@ -4,13 +4,14 @@ import 'package:provider/provider.dart';
 import '../constants/app_colors.dart';
 import '../models/transaction.dart';
 import '../providers/erp_provider.dart';
+import '../services/pdf_service.dart';
 import '../utils/format.dart';
 import '../widgets/app_header.dart';
 import '../widgets/erp_bottom_sheet.dart';
 import '../widgets/transaction_row.dart';
 import 'add_party_sheet.dart';
 import 'new_transaction_sheet.dart';
-import '../services/pdf_service.dart';
+import 'pdf_preview_screen.dart';
 
 class PartyDetailScreen extends StatefulWidget {
   final String partyId;
@@ -66,6 +67,92 @@ class _PartyDetailScreenState extends State<PartyDetailScreen> {
     return bal;
   }
 
+  Future<void> _showExportDialog(BuildContext context, ERPProvider erp) async {
+    final party = erp.getPartyById(widget.partyId);
+    if (party == null) return;
+
+    await showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: AppColors.card,
+        title: Text('Export Ledger', style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 18, color: AppColors.foreground)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Choose how to export the ledger for ${party.name}', style: GoogleFonts.inter(fontSize: 13, color: AppColors.mutedForeground, height: 1.5)),
+            const SizedBox(height: 20),
+            _ExportOption(
+              icon: Icons.visibility_outlined,
+              color: AppColors.primary,
+              bgColor: AppColors.secondary,
+              title: 'Preview',
+              subtitle: 'View the PDF before downloading',
+              onTap: () async {
+                Navigator.of(context).pop();
+                await _previewPdf(context, erp);
+              },
+            ),
+            const SizedBox(height: 10),
+            _ExportOption(
+              icon: Icons.download_rounded,
+              color: AppColors.success,
+              bgColor: const Color(0xFFDCFCE7),
+              title: 'Download',
+              subtitle: 'Save PDF directly to your device',
+              onTap: () async {
+                Navigator.of(context).pop();
+                await _exportPdf(context, erp);
+              },
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('Cancel', style: GoogleFonts.inter(color: AppColors.mutedForeground)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _previewPdf(BuildContext context, ERPProvider erp) async {
+    final party = erp.getPartyById(widget.partyId);
+    if (party == null) return;
+    setState(() => _exporting = true);
+    try {
+      final allTxs = erp.getPartyTransactions(widget.partyId);
+      final filtered = _filtered(allTxs)..sort((a, b) => parseDate(a.date).compareTo(parseDate(b.date)));
+      final opening = _openingBefore(allTxs, party.openingBal);
+      final bytes = await PdfService.buildLedgerBytes(
+        party: party,
+        transactions: filtered,
+        startDate: _startDate,
+        endDate: _endDate,
+        openingBefore: opening,
+        itemNameById: (id) => erp.getItemById(id ?? '')?.name ?? '',
+      );
+      final safeName = party.name.replaceAll(' ', '_');
+      if (context.mounted) {
+        Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => PdfPreviewScreen(pdfBytes: bytes, filename: 'ledger_$safeName.pdf'),
+        ));
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Preview failed: $e', style: GoogleFonts.inter()),
+          backgroundColor: AppColors.destructive,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _exporting = false);
+    }
+  }
+
   Future<void> _exportPdf(BuildContext context, ERPProvider erp) async {
     final party = erp.getPartyById(widget.partyId);
     if (party == null) return;
@@ -82,6 +169,14 @@ class _PartyDetailScreenState extends State<PartyDetailScreen> {
         openingBefore: opening,
         itemNameById: (id) => erp.getItemById(id ?? '')?.name ?? '',
       );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('PDF downloaded!', style: GoogleFonts.inter()),
+          backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ));
+      }
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -134,7 +229,7 @@ class _PartyDetailScreenState extends State<PartyDetailScreen> {
                 onBack: () => Navigator.of(context).pop(),
                 actions: [
                   AppHeaderAction(icon: Icons.edit_outlined, onPress: () => showModalBottomSheet(context: context, isScrollControlled: true, backgroundColor: Colors.transparent, builder: (_) => AddPartySheet(editing: party))),
-                  AppHeaderAction(icon: _exporting ? Icons.hourglass_empty : Icons.download_outlined, onPress: () => _exportPdf(context, erp)),
+                  AppHeaderAction(icon: _exporting ? Icons.hourglass_empty : Icons.ios_share_outlined, onPress: () => _showExportDialog(context, erp)),
                   AppHeaderAction(icon: Icons.delete_outline, onPress: () => _deleteParty(context, erp), destructive: true),
                 ],
               ),
@@ -142,7 +237,6 @@ class _PartyDetailScreenState extends State<PartyDetailScreen> {
                 child: ListView(
                   padding: const EdgeInsets.fromLTRB(20, 20, 20, 120),
                   children: [
-                    // Balance card
                     Container(
                       padding: const EdgeInsets.all(22),
                       decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(20)),
@@ -170,7 +264,11 @@ class _PartyDetailScreenState extends State<PartyDetailScreen> {
                     Row(children: [
                       Expanded(child: _ActionBtn(icon: Icons.receipt_long_outlined, label: 'New Voucher', onPress: () => showModalBottomSheet(context: context, isScrollControlled: true, backgroundColor: Colors.transparent, builder: (_) => NewTransactionSheet(defaultPartyId: party.id)))),
                       const SizedBox(width: 10),
-                      Expanded(child: _ActionBtn(icon: _exporting ? Icons.hourglass_empty : Icons.download_outlined, label: _exporting ? 'Exporting...' : 'Export PDF', onPress: _exporting ? null : () => _exportPdf(context, erp))),
+                      Expanded(child: _ActionBtn(
+                        icon: _exporting ? Icons.hourglass_empty : Icons.ios_share_outlined,
+                        label: _exporting ? 'Exporting...' : 'Export PDF',
+                        onPress: _exporting ? null : () => _showExportDialog(context, erp),
+                      )),
                     ]),
                     const SizedBox(height: 14),
 
@@ -270,6 +368,45 @@ class _PartyDetailScreenState extends State<PartyDetailScreen> {
       await erp.deleteParty(widget.partyId);
       Navigator.of(context).pop();
     }
+  }
+}
+
+class _ExportOption extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final Color bgColor;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  const _ExportOption({required this.icon, required this.color, required this.bgColor, required this.title, required this.subtitle, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: bgColor.withOpacity(0.5),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: bgColor),
+        ),
+        child: Row(children: [
+          Container(
+            width: 42, height: 42,
+            decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(12)),
+            child: Icon(icon, size: 20, color: color),
+          ),
+          const SizedBox(width: 14),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(title, style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 15, color: AppColors.foreground)),
+            Text(subtitle, style: GoogleFonts.inter(fontSize: 12, color: AppColors.mutedForeground, height: 1.4)),
+          ])),
+          Icon(Icons.chevron_right_rounded, size: 20, color: color),
+        ]),
+      ),
+    );
   }
 }
 

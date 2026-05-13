@@ -13,13 +13,12 @@ import 'screens/login_screen.dart';
 import 'screens/main_screen.dart';
 import 'screens/pattern_lock_screen.dart';
 import 'services/auth_service.dart';
+import 'services/locale_service.dart';
 import 'services/security_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Safely initialise Firebase — placeholder credentials will throw, which
-  // we catch so the rest of the app (storage, PDF, etc.) still works fine.
   try {
     await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
     firebaseReady = true;
@@ -27,7 +26,8 @@ void main() async {
     firebaseReady = false;
   }
 
-  // Portrait lock only on mobile — not supported on web
+  await LocaleService.instance.load();
+
   if (!kIsWeb) {
     await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   }
@@ -40,34 +40,41 @@ class ShabbirERP extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final interTheme = GoogleFonts.interTextTheme(ThemeData.light().textTheme);
-    return ChangeNotifierProvider(
-      create: (_) => ERPProvider()..load(),
-      child: MaterialApp(
-        title: 'Shabbir ERP',
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          useMaterial3: true,
-          textTheme: interTheme,
-          colorScheme: const ColorScheme.light(
-            primary: AppColors.primary,
-            secondary: AppColors.tint,
-            surface: AppColors.card,
-            onPrimary: Colors.white,
-            onSecondary: Colors.white,
-            onSurface: AppColors.foreground,
-          ),
-          scaffoldBackgroundColor: AppColors.background,
-          appBarTheme: AppBarTheme(
-            backgroundColor: AppColors.background,
-            foregroundColor: AppColors.foreground,
-            elevation: 0,
-            scrolledUnderElevation: 0,
-            titleTextStyle: GoogleFonts.inter(
-                fontWeight: FontWeight.w700, fontSize: 20, color: AppColors.foreground),
-          ),
+    return ChangeNotifierProvider.value(
+      value: LocaleService.instance,
+      child: ChangeNotifierProvider(
+        create: (_) => ERPProvider()..load(),
+        child: Consumer<LocaleService>(
+          builder: (context, locale, _) {
+            final interTheme = GoogleFonts.interTextTheme(ThemeData.light().textTheme);
+            return MaterialApp(
+              title: 'Shabbir ERP',
+              debugShowCheckedModeBanner: false,
+              theme: ThemeData(
+                useMaterial3: true,
+                textTheme: interTheme,
+                colorScheme: const ColorScheme.light(
+                  primary: AppColors.primary,
+                  secondary: AppColors.tint,
+                  surface: AppColors.card,
+                  onPrimary: Colors.white,
+                  onSecondary: Colors.white,
+                  onSurface: AppColors.foreground,
+                ),
+                scaffoldBackgroundColor: AppColors.background,
+                appBarTheme: AppBarTheme(
+                  backgroundColor: AppColors.background,
+                  foregroundColor: AppColors.foreground,
+                  elevation: 0,
+                  scrolledUnderElevation: 0,
+                  titleTextStyle: GoogleFonts.inter(
+                      fontWeight: FontWeight.w700, fontSize: 20, color: AppColors.foreground),
+                ),
+              ),
+              home: const AppRoot(),
+            );
+          },
         ),
-        home: const AppRoot(),
       ),
     );
   }
@@ -94,7 +101,6 @@ class _AppRootState extends State<AppRoot> {
   Future<void> _checkAuth() async {
     final prefs = await SharedPreferences.getInstance();
 
-    // If Firebase never initialised, skip auth entirely — go straight to app.
     if (!firebaseReady) {
       setState(() {
         _isLoggedIn = true;
@@ -104,7 +110,6 @@ class _AppRootState extends State<AppRoot> {
       return;
     }
 
-    // If user previously chose Offline Mode, restore that session.
     final offlineSession = prefs.getBool('offline_logged_in') ?? false;
     if (offlineSession) {
       final patternEnabled = await SecurityService.instance.isPatternEnabled();
@@ -144,7 +149,6 @@ class _AppRootState extends State<AppRoot> {
   }
 
   void _onLogout() {
-    // Clear offline session flag so the user returns to the login screen.
     SharedPreferences.getInstance().then((p) => p.remove('offline_logged_in'));
     if (!firebaseReady) {
       setState(() {

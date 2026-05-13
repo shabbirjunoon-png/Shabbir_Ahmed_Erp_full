@@ -1,4 +1,6 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../constants/app_colors.dart';
 
@@ -28,46 +30,19 @@ class ShabbirLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        CustomPaint(
-          size: Size(size, size),
-          painter: _ShieldLogoPainter(
-            bgColor: bgColor,
-            textColor: textColor,
-            size: size,
-          ),
-        ),
-        if (showBadge)
-          Positioned(
-            top: -(size * 0.18),
-            right: -(size * 0.18),
-            child: Container(
-              width: size * 0.44,
-              height: size * 0.44,
-              decoration: BoxDecoration(
-                color: badgeColor,
-                shape: BoxShape.circle,
-                border: Border.all(color: bgColor, width: 1.5),
-                boxShadow: [
-                  BoxShadow(
-                    color: badgeColor.withOpacity(0.4),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Center(
-                child: Icon(
-                  Icons.settings,
-                  size: size * 0.22,
-                  color: AppColors.primary,
-                ),
-              ),
-            ),
-          ),
-      ],
+    return FutureBuilder<Uint8List>(
+      future: rootBundle.load('assets/logo.png').then((d) => d.buffer.asUint8List()),
+      builder: (context, snapshot) {
+        if (snapshot.hasData) {
+          return Image.memory(
+            snapshot.data!,
+            width: size,
+            height: size,
+            fit: BoxFit.contain,
+          );
+        }
+        return SizedBox(width: size, height: size);
+      },
     );
   }
 }

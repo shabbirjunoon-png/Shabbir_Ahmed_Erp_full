@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -6,6 +7,9 @@ import '../services/web_download_stub.dart'
     if (dart.library.html) '../services/web_download_html.dart';
 import '../services/native_backup_stub.dart'
     if (dart.library.io) '../services/native_backup_impl.dart';
+// ignore: avoid_web_libraries_in_flutter
+import '../services/pdf_iframe_stub.dart'
+    if (dart.library.html) '../services/pdf_iframe_html.dart';
 
 class PdfPreviewScreen extends StatelessWidget {
   final List<int> pdfBytes;
@@ -134,7 +138,7 @@ class PdfPreviewScreen extends StatelessWidget {
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(16),
-                child: _PdfHtmlViewer(pdfBytes: pdfBytes),
+                child: _PdfViewer(pdfBytes: pdfBytes),
               ),
             ),
           ),
@@ -144,9 +148,9 @@ class PdfPreviewScreen extends StatelessWidget {
   }
 }
 
-class _PdfHtmlViewer extends StatelessWidget {
+class _PdfViewer extends StatelessWidget {
   final List<int> pdfBytes;
-  const _PdfHtmlViewer({required this.pdfBytes});
+  const _PdfViewer({required this.pdfBytes});
 
   @override
   Widget build(BuildContext context) {
@@ -202,41 +206,37 @@ class _NativePdfPlaceholder extends StatelessWidget {
   }
 }
 
-class _WebPdfEmbed extends StatelessWidget {
+class _WebPdfEmbed extends StatefulWidget {
   final List<int> pdfBytes;
   const _WebPdfEmbed({required this.pdfBytes});
 
   @override
+  State<_WebPdfEmbed> createState() => _WebPdfEmbedState();
+}
+
+class _WebPdfEmbedState extends State<_WebPdfEmbed> {
+  String? _iframeId;
+
+  @override
+  void initState() {
+    super.initState();
+    final base64Data = base64Encode(widget.pdfBytes);
+    _iframeId = registerPdfIframe(base64Data);
+  }
+
+  @override
+  void dispose() {
+    if (_iframeId != null) {
+      unregisterPdfIframe(_iframeId!);
+    }
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final kb = (pdfBytes.length / 1024).toStringAsFixed(1);
-    return Center(
-      child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-        Container(
-          width: 72,
-          height: 72,
-          decoration: BoxDecoration(color: AppColors.secondary, borderRadius: BorderRadius.circular(20)),
-          child: const Icon(Icons.picture_as_pdf_outlined, size: 36, color: AppColors.primary),
-        ),
-        const SizedBox(height: 16),
-        Text('PDF Ready ($kb KB)', style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 16, color: AppColors.foreground)),
-        const SizedBox(height: 8),
-        Text('Tap "Download" to save the PDF\nto your device or computer.', textAlign: TextAlign.center, style: GoogleFonts.inter(fontSize: 13, color: AppColors.mutedForeground, height: 1.6)),
-        const SizedBox(height: 24),
-        GestureDetector(
-          onTap: () {
-            triggerWebDownload(pdfBytes, 'ledger.pdf');
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
-            decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(14)),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              const Icon(Icons.download_rounded, size: 18, color: Colors.white),
-              const SizedBox(width: 10),
-              Text('Download PDF', style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 15, color: Colors.white)),
-            ]),
-          ),
-        ),
-      ]),
-    );
+    if (_iframeId == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    return buildPdfIframeWidget(_iframeId!);
   }
 }

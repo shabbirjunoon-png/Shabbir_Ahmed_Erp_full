@@ -43,7 +43,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.primary,
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 28),
@@ -61,12 +61,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 // Logo
                 ShabbirLogo(
-                  size: 72,
-                  bgColor: AppColors.accent,
-                  textColor: AppColors.primary,
-                  badgeColor: AppColors.primary,
+                  size: 80,
+                  bgColor: AppColors.primary,
+                  textColor: AppColors.accent,
+                  badgeColor: AppColors.accent,
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 28),
 
                 Text(
                   'Shabbir Ledger',
@@ -74,7 +74,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     fontWeight: FontWeight.w800,
                     fontSize: 34,
                     letterSpacing: -1.0,
-                    color: Colors.white,
+                    color: AppColors.foreground,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -82,7 +82,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   'Business accounting, seedha aur simple.',
                   style: GoogleFonts.inter(
                     fontSize: 15,
-                    color: Colors.white54,
+                    color: AppColors.mutedForeground,
                     height: 1.5,
                   ),
                 ),
@@ -93,17 +93,17 @@ class _LoginScreenState extends State<LoginScreen> {
                   Container(
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: AppColors.destructive.withOpacity(0.18),
+                      color: AppColors.destructive.withOpacity(0.08),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.destructive.withOpacity(0.4)),
+                      border: Border.all(color: AppColors.destructive.withOpacity(0.3)),
                     ),
                     child: Row(children: [
-                      const Icon(Icons.error_outline, size: 18, color: Colors.white70),
+                      Icon(Icons.error_outline, size: 18, color: AppColors.destructive),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
                           _error!,
-                          style: GoogleFonts.inter(fontSize: 13, color: Colors.white70, height: 1.4),
+                          style: GoogleFonts.inter(fontSize: 13, color: AppColors.destructive, height: 1.4),
                         ),
                       ),
                     ]),
@@ -117,7 +117,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   style: GoogleFonts.inter(
                     fontWeight: FontWeight.w600,
                     fontSize: 11,
-                    color: AppColors.accent,
+                    color: AppColors.primary,
                     letterSpacing: 1.2,
                   ),
                 ),
@@ -126,25 +126,26 @@ class _LoginScreenState extends State<LoginScreen> {
                 // Name input
                 Container(
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.08),
+                    color: AppColors.card,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.white.withOpacity(0.15)),
+                    border: Border.all(color: AppColors.border),
+                    boxShadow: [AppColors.cardShadow],
                   ),
                   child: TextField(
                     controller: _nameController,
                     autofocus: false,
                     textCapitalization: TextCapitalization.words,
                     style: GoogleFonts.inter(
-                      color: Colors.white,
+                      color: AppColors.foreground,
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
                     ),
                     decoration: InputDecoration(
                       hintText: 'Jaise: Shabbir Ahmed',
-                      hintStyle: GoogleFonts.inter(color: Colors.white30, fontSize: 16),
+                      hintStyle: GoogleFonts.inter(color: AppColors.mutedForeground, fontSize: 16),
                       border: InputBorder.none,
                       contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-                      prefixIcon: const Icon(Icons.person_outline, color: AppColors.accent, size: 20),
+                      prefixIcon: Icon(Icons.person_outline, color: AppColors.accent, size: 20),
                     ),
                     onSubmitted: (_) => _login(),
                   ),
@@ -158,24 +159,24 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: ElevatedButton(
                     onPressed: _loading ? null : _login,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.accent,
-                      foregroundColor: AppColors.primary,
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
                       elevation: 0,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      disabledBackgroundColor: AppColors.accent.withOpacity(0.5),
+                      disabledBackgroundColor: AppColors.primary.withOpacity(0.4),
                     ),
                     child: _loading
-                        ? const SizedBox(
+                        ? SizedBox(
                             width: 20,
                             height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.primary),
+                            child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.accent),
                           )
                         : Text(
                             'Shuru Karo',
                             style: GoogleFonts.inter(
                               fontWeight: FontWeight.w700,
                               fontSize: 16,
-                              color: AppColors.primary,
+                              color: Colors.white,
                             ),
                           ),
                   ),
@@ -186,21 +187,21 @@ class _LoginScreenState extends State<LoginScreen> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.05),
+                    color: AppColors.secondary,
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: Colors.white.withOpacity(0.1)),
+                    border: Border.all(color: AppColors.border),
                   ),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(Icons.shield_outlined, size: 18, color: AppColors.accent),
+                      Icon(Icons.shield_outlined, size: 18, color: AppColors.accent),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
                           'Aapka sab data sirf is device par save hoga. Koi internet ki zaroorat nahi. Backup le kar dusri jagah le ja sakte ho.',
                           style: GoogleFonts.inter(
                             fontSize: 13,
-                            color: Colors.white54,
+                            color: AppColors.mutedForeground,
                             height: 1.6,
                           ),
                         ),

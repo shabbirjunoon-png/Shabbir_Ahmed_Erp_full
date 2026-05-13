@@ -31,23 +31,12 @@ class ShabbirLogo extends StatelessWidget {
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        Container(
-          width: size,
-          height: size,
-          decoration: BoxDecoration(
-            color: bgColor,
-            borderRadius: BorderRadius.circular(size * 0.28),
-          ),
-          child: Center(
-            child: Text(
-              'S',
-              style: GoogleFonts.inter(
-                fontWeight: FontWeight.w900,
-                fontSize: size * 0.5,
-                color: textColor,
-                height: 1,
-              ),
-            ),
+        CustomPaint(
+          size: Size(size, size),
+          painter: _ShieldLogoPainter(
+            bgColor: bgColor,
+            textColor: textColor,
+            size: size,
           ),
         ),
         if (showBadge)
@@ -61,11 +50,18 @@ class ShabbirLogo extends StatelessWidget {
                 color: badgeColor,
                 shape: BoxShape.circle,
                 border: Border.all(color: bgColor, width: 1.5),
+                boxShadow: [
+                  BoxShadow(
+                    color: badgeColor.withOpacity(0.4),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
               child: Center(
                 child: Icon(
-                  Icons.workspace_premium,
-                  size: size * 0.24,
+                  Icons.settings,
+                  size: size * 0.22,
                   color: AppColors.primary,
                 ),
               ),
@@ -74,6 +70,135 @@ class ShabbirLogo extends StatelessWidget {
       ],
     );
   }
+}
+
+class _ShieldLogoPainter extends CustomPainter {
+  final Color bgColor;
+  final Color textColor;
+  final double size;
+
+  _ShieldLogoPainter({
+    required this.bgColor,
+    required this.textColor,
+    required this.size,
+  });
+
+  @override
+  void paint(Canvas canvas, Size canvasSize) {
+    final w = canvasSize.width;
+    final h = canvasSize.height;
+
+    // Shield path
+    final path = Path();
+    path.moveTo(w * 0.5, 0);
+    path.lineTo(w * 0.95, h * 0.18);
+    path.lineTo(w * 0.95, h * 0.55);
+    path.cubicTo(w * 0.95, h * 0.82, w * 0.72, h * 0.95, w * 0.5, h);
+    path.cubicTo(w * 0.28, h * 0.95, w * 0.05, h * 0.82, w * 0.05, h * 0.55);
+    path.lineTo(w * 0.05, h * 0.18);
+    path.close();
+
+    // Outer shield shadow/border (metallic depth)
+    final borderPaint = Paint()
+      ..color = AppColors.accent.withOpacity(0.35)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.outer, 4);
+    canvas.drawPath(path, borderPaint);
+
+    // Main shield fill — gradient (navy deep to slightly lighter)
+    final gradient = LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: [
+        bgColor,
+        Color.lerp(bgColor, Colors.white, 0.12)!,
+        bgColor,
+      ],
+      stops: const [0.0, 0.5, 1.0],
+    );
+    final rect = Rect.fromLTWH(0, 0, w, h);
+    final fillPaint = Paint()
+      ..shader = gradient.createShader(rect)
+      ..style = PaintingStyle.fill;
+    canvas.drawPath(path, fillPaint);
+
+    // Metallic border ring
+    final strokePaint = Paint()
+      ..color = AppColors.accent.withOpacity(0.75)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = w * 0.04;
+    canvas.drawPath(path, strokePaint);
+
+    // Inner highlight line (3D emboss feel)
+    final innerPath = Path();
+    final inset = w * 0.08;
+    innerPath.moveTo(w * 0.5, inset * 0.6);
+    innerPath.lineTo(w - inset, h * 0.22);
+    innerPath.lineTo(w - inset, h * 0.53);
+    innerPath.cubicTo(w - inset, h * 0.78, w * 0.7, h * 0.9, w * 0.5, h * 0.94);
+    innerPath.cubicTo(w * 0.3, h * 0.9, inset, h * 0.78, inset, h * 0.53);
+    innerPath.lineTo(inset, h * 0.22);
+    innerPath.close();
+    final innerPaint = Paint()
+      ..color = Colors.white.withOpacity(0.06)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = w * 0.02;
+    canvas.drawPath(innerPath, innerPaint);
+
+    // Bar chart icon (bottom portion of shield)
+    final barPaint = Paint()
+      ..color = AppColors.accent.withOpacity(0.45)
+      ..style = PaintingStyle.fill;
+    final barW = w * 0.08;
+    final barBottomY = h * 0.80;
+    final barData = [0.25, 0.45, 0.35];
+    final barStartX = w * 0.27;
+    final barGap = w * 0.12;
+    for (int i = 0; i < barData.length; i++) {
+      final bh = h * 0.28 * barData[i];
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(barStartX + i * (barW + barGap), barBottomY - bh, barW, bh),
+          const Radius.circular(2),
+        ),
+        barPaint,
+      );
+    }
+
+    // "SA" monogram — intertwined initials
+    // Draw "S" slightly left, "A" slightly right, overlapping in the center
+    final sPainter = TextPainter(
+      text: TextSpan(
+        text: 'S',
+        style: GoogleFonts.inter(
+          fontWeight: FontWeight.w900,
+          fontSize: w * 0.36,
+          color: textColor.withOpacity(0.95),
+          height: 1,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    );
+    sPainter.layout();
+    sPainter.paint(canvas, Offset(w * 0.11, h * 0.22));
+
+    final aPainter = TextPainter(
+      text: TextSpan(
+        text: 'A',
+        style: GoogleFonts.inter(
+          fontWeight: FontWeight.w900,
+          fontSize: w * 0.32,
+          color: AppColors.accent.withOpacity(0.80),
+          height: 1,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    );
+    aPainter.layout();
+    aPainter.paint(canvas, Offset(w * 0.42, h * 0.24));
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class AppHeader extends StatelessWidget implements PreferredSizeWidget {

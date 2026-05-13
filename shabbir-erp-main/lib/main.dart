@@ -15,6 +15,7 @@ import 'screens/pattern_lock_screen.dart';
 import 'services/auth_service.dart';
 import 'services/locale_service.dart';
 import 'services/security_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show AuthChangeEvent;
 import 'services/supabase_service.dart';
 
 void main() async {
@@ -101,48 +102,61 @@ class _AppRootState extends State<AppRoot> {
   void initState() {
     super.initState();
     _checkAuth();
+    // Listen for Supabase OAuth redirects completing
+    try {
+      SupabaseService.instance.authStateChanges.listen((data) {
+        if (!mounted) return;
+        final event = data.event;
+        if (event == AuthChangeEvent.signedIn) {
+          _onLogin();
+        } else if (event == AuthChangeEvent.signedOut) {
+          _onLogout();
+        }
+      });
+    } catch (_) {}
   }
 
   Future<void> _checkAuth() async {
     final prefs = await SharedPreferences.getInstance();
 
-    if (!firebaseReady) {
-      setState(() {
-        _isLoggedIn = true;
-        _needsPattern = false;
-        _loading = false;
-      });
-      return;
-    }
+    // Check Supabase social login session first
+    try {
+      if (SupabaseService.instance.isLoggedIn) {
+        final patternEnabled = await SecurityService.instance.isPatternEnabled();
+        final hasPattern = await SecurityService.instance.hasPatternSet();
+        if (mounted) {
+          setState(() {
+            _isLoggedIn = true;
+            _needsPattern = patternEnabled && hasPattern;
+            _loading = false;
+          });
+        }
+        return;
+      }
+    } catch (_) {}
 
+    // Check offline / guest session
     final offlineSession = prefs.getBool('offline_logged_in') ?? false;
     if (offlineSession) {
       final patternEnabled = await SecurityService.instance.isPatternEnabled();
       final hasPattern = await SecurityService.instance.hasPatternSet();
-      setState(() {
-        _isLoggedIn = true;
-        _needsPattern = patternEnabled && hasPattern;
-        _loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoggedIn = true;
+          _needsPattern = patternEnabled && hasPattern;
+          _loading = false;
+        });
+      }
       return;
     }
 
-    final user = AuthService.instance.currentUser;
-    if (user == null) {
+    // Not logged in
+    if (mounted) {
       setState(() {
         _isLoggedIn = false;
         _loading = false;
       });
-      return;
     }
-
-    final patternEnabled = await SecurityService.instance.isPatternEnabled();
-    final hasPattern = await SecurityService.instance.hasPatternSet();
-    setState(() {
-      _isLoggedIn = true;
-      _needsPattern = patternEnabled && hasPattern;
-      _loading = false;
-    });
   }
 
   void _onLogin() {
@@ -155,14 +169,6 @@ class _AppRootState extends State<AppRoot> {
 
   void _onLogout() {
     SharedPreferences.getInstance().then((p) => p.remove('offline_logged_in'));
-    if (!firebaseReady) {
-      setState(() {
-        _isLoggedIn = false;
-        _needsPattern = false;
-        _loading = false;
-      });
-      return;
-    }
     setState(() {
       _isLoggedIn = false;
       _needsPattern = false;

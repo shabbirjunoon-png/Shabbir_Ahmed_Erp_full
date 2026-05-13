@@ -412,6 +412,7 @@ class SettingsScreenState extends State<SettingsScreen> {  // ignore: library_pr
     if (!confirm) return;
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('offline_logged_in');
+    try { await SupabaseService.instance.signOut(); } catch (_) {}
     if (mounted) widget.onLogout();
   }
 

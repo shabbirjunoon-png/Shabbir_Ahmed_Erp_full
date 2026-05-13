@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/party.dart';
 import '../models/stock_item.dart';
@@ -15,13 +16,69 @@ class SupabaseService {
     return _instance!;
   }
 
-  static const _userId = 'default';
-
   static Future<void> initialize() async {
-    await Supabase.initialize(url: _supabaseUrl, anonKey: _supabaseAnonKey);
+    await Supabase.initialize(
+      url: _supabaseUrl,
+      anonKey: _supabaseAnonKey,
+    );
   }
 
   SupabaseClient get _client => Supabase.instance.client;
+
+  // ── Auth ──────────────────────────────────────────────────────────────────
+
+  User? get currentUser => _client.auth.currentUser;
+
+  bool get isLoggedIn => _client.auth.currentUser != null;
+
+  String get userId => _client.auth.currentUser?.id ?? 'default';
+
+  String get displayName {
+    final u = _client.auth.currentUser;
+    if (u == null) return 'User';
+    return u.userMetadata?['full_name'] as String? ??
+        u.userMetadata?['name'] as String? ??
+        u.email ??
+        'User';
+  }
+
+  String? get avatarUrl {
+    final u = _client.auth.currentUser;
+    return u?.userMetadata?['avatar_url'] as String? ??
+        u?.userMetadata?['picture'] as String?;
+  }
+
+  String get email => _client.auth.currentUser?.email ?? '';
+
+  Stream<AuthState> get authStateChanges => _client.auth.onAuthStateChange;
+
+  Future<void> signInWithGoogle() async {
+    await _client.auth.signInWithOAuth(
+      OAuthProvider.google,
+      redirectTo: kIsWeb ? _redirectUrl() : null,
+      authScreenLaunchMode: LaunchMode.platformDefault,
+    );
+  }
+
+  Future<void> signInWithFacebook() async {
+    await _client.auth.signInWithOAuth(
+      OAuthProvider.facebook,
+      redirectTo: kIsWeb ? _redirectUrl() : null,
+      authScreenLaunchMode: LaunchMode.platformDefault,
+    );
+  }
+
+  Future<void> signOut() async {
+    await _client.auth.signOut();
+  }
+
+  String _redirectUrl() {
+    if (kIsWeb) {
+      final uri = Uri.base;
+      return '${uri.scheme}://${uri.host}${uri.port != 80 && uri.port != 443 ? ':${uri.port}' : ''}/';
+    }
+    return '$_supabaseUrl/auth/v1/callback';
+  }
 
   // ── Parties ──────────────────────────────────────────────────────────────
 
@@ -29,7 +86,7 @@ class SupabaseService {
     final res = await _client
         .from('parties')
         .select()
-        .eq('user_id', _userId)
+        .eq('user_id', userId)
         .order('created_at', ascending: false);
     return (res as List).map((e) => Party.fromMap(e as Map<String, dynamic>)).toList();
   }
@@ -37,12 +94,12 @@ class SupabaseService {
   Future<void> upsertParty(Party party) async {
     await _client.from('parties').upsert({
       ...party.toMap(),
-      'user_id': _userId,
+      'user_id': userId,
     });
   }
 
   Future<void> deleteParty(String id) async {
-    await _client.from('parties').delete().eq('id', id).eq('user_id', _userId);
+    await _client.from('parties').delete().eq('id', id).eq('user_id', userId);
   }
 
   // ── Stock Items ───────────────────────────────────────────────────────────
@@ -51,7 +108,7 @@ class SupabaseService {
     final res = await _client
         .from('stock_items')
         .select()
-        .eq('user_id', _userId)
+        .eq('user_id', userId)
         .order('created_at', ascending: false);
     return (res as List).map((e) => StockItem.fromMap(e as Map<String, dynamic>)).toList();
   }
@@ -59,12 +116,12 @@ class SupabaseService {
   Future<void> upsertStockItem(StockItem item) async {
     await _client.from('stock_items').upsert({
       ...item.toMap(),
-      'user_id': _userId,
+      'user_id': userId,
     });
   }
 
   Future<void> deleteStockItem(String id) async {
-    await _client.from('stock_items').delete().eq('id', id).eq('user_id', _userId);
+    await _client.from('stock_items').delete().eq('id', id).eq('user_id', userId);
   }
 
   // ── Transactions ──────────────────────────────────────────────────────────
@@ -73,7 +130,7 @@ class SupabaseService {
     final res = await _client
         .from('transactions')
         .select()
-        .eq('user_id', _userId)
+        .eq('user_id', userId)
         .order('created_at', ascending: false);
     return (res as List).map((e) => Transaction.fromMap(e as Map<String, dynamic>)).toList();
   }
@@ -81,17 +138,16 @@ class SupabaseService {
   Future<void> upsertTransaction(Transaction tx) async {
     await _client.from('transactions').upsert({
       ...tx.toMap(),
-      'user_id': _userId,
+      'user_id': userId,
     });
   }
 
   Future<void> deleteTransaction(String id) async {
-    await _client.from('transactions').delete().eq('id', id).eq('user_id', _userId);
+    await _client.from('transactions').delete().eq('id', id).eq('user_id', userId);
   }
 
   // ── Sync helpers ──────────────────────────────────────────────────────────
 
-  /// Push all local data up to Supabase (full upsert).
   Future<void> pushAll({
     required List<Party> parties,
     required List<StockItem> items,
@@ -99,22 +155,21 @@ class SupabaseService {
   }) async {
     if (parties.isNotEmpty) {
       await _client.from('parties').upsert(
-        parties.map((p) => {...p.toMap(), 'user_id': _userId}).toList(),
+        parties.map((p) => {...p.toMap(), 'user_id': userId}).toList(),
       );
     }
     if (items.isNotEmpty) {
       await _client.from('stock_items').upsert(
-        items.map((i) => {...i.toMap(), 'user_id': _userId}).toList(),
+        items.map((i) => {...i.toMap(), 'user_id': userId}).toList(),
       );
     }
     if (transactions.isNotEmpty) {
       await _client.from('transactions').upsert(
-        transactions.map((t) => {...t.toMap(), 'user_id': _userId}).toList(),
+        transactions.map((t) => {...t.toMap(), 'user_id': userId}).toList(),
       );
     }
   }
 
-  /// Pull everything from Supabase.
   Future<Map<String, dynamic>> pullAll() async {
     final parties = await getParties();
     final items = await getStockItems();

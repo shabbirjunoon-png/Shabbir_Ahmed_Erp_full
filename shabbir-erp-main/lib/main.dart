@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'app_config.dart';
 import 'constants/app_colors.dart';
 import 'firebase_options.dart';
+import 'logo_loader.dart';
 import 'providers/erp_provider.dart';
 import 'screens/login_screen.dart';
 import 'screens/main_screen.dart';
@@ -32,7 +33,10 @@ void main() async {
     await SupabaseService.initialize();
   } catch (_) {}
 
-  await LocaleService.instance.load();
+  await Future.wait([
+    LocaleService.instance.load(),
+    preloadLogoImage(),
+  ]);
 
   if (!kIsWeb) {
     await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);

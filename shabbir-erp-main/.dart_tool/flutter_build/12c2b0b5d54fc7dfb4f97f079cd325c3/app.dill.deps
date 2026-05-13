@@ -1978,6 +1978,8 @@ file:///home/runner/workspace/shabbir-erp-main/.dart_tool/package_config.json
 file:///home/runner/workspace/shabbir-erp-main/lib/app_config.dart
 file:///home/runner/workspace/shabbir-erp-main/lib/constants/app_colors.dart
 file:///home/runner/workspace/shabbir-erp-main/lib/firebase_options.dart
+file:///home/runner/workspace/shabbir-erp-main/lib/logo_data.dart
+file:///home/runner/workspace/shabbir-erp-main/lib/logo_loader.dart
 file:///home/runner/workspace/shabbir-erp-main/lib/main.dart
 file:///home/runner/workspace/shabbir-erp-main/lib/models/party.dart
 file:///home/runner/workspace/shabbir-erp-main/lib/models/stock_item.dart

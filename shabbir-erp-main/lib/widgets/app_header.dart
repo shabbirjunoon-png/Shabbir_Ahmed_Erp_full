@@ -30,137 +30,110 @@ class ShabbirLogo extends StatelessWidget {
   Widget build(BuildContext context) {
     return CustomPaint(
       size: Size(size, size),
-      painter: _GoldShieldPainter(size: size),
+      painter: _SaIconPainter(),
     );
   }
 }
 
-class _GoldShieldPainter extends CustomPainter {
-  final double size;
-  const _GoldShieldPainter({required this.size});
-
-  static const _navy = AppColors.primary;      // #1E1B4B
-  static const _gold = AppColors.accent;       // #F59E0B
-  static const _goldLight = Color(0xFFFFD166); // lighter gold highlight
-  static const _goldDark = Color(0xFFB45309);  // darker gold shadow
-
-  Path _shieldPath(double w, double h) {
-    final p = Path();
-    // Classic pointed-bottom shield
-    p.moveTo(w * 0.50, h * 0.03);
-    p.lineTo(w * 0.96, h * 0.20);
-    p.lineTo(w * 0.96, h * 0.56);
-    p.cubicTo(w * 0.96, h * 0.80, w * 0.75, h * 0.93, w * 0.50, h * 0.99);
-    p.cubicTo(w * 0.25, h * 0.93, w * 0.04, h * 0.80, w * 0.04, h * 0.56);
-    p.lineTo(w * 0.04, h * 0.20);
-    p.close();
-    return p;
-  }
+// Faithful recreation of the SA rounded-square logo:
+// navy left half + cream right half split by a diagonal swoosh,
+// gold "S" on left, navy "A" on right, bar chart top-right, gold border.
+class _SaIconPainter extends CustomPainter {
+  static const _navy  = AppColors.primary;        // #1E1B4B
+  static const _gold  = AppColors.accent;         // #F59E0B
+  static const _goldS = Color(0xFFFFD166);        // lighter gold for "S"
+  static const _cream = Color(0xFFFEF9E7);        // right-half cream
 
   @override
   void paint(Canvas canvas, Size s) {
     final w = s.width;
     final h = s.height;
-    final shield = _shieldPath(w, h);
-    final rect = Rect.fromLTWH(0, 0, w, h);
+    final r = w * 0.22; // corner radius (iOS-icon style)
+    final bounds = Rect.fromLTWH(0, 0, w, h);
+    final rr = RRect.fromRectAndRadius(bounds, Radius.circular(r));
 
-    // ── Drop shadow ──────────────────────────────────────────────────────────
-    canvas.drawPath(
-      shield.shift(const Offset(0, 2)),
-      Paint()
-        ..color = _goldDark.withOpacity(0.30)
-        ..maskFilter = MaskFilter.blur(BlurStyle.normal, w * 0.06),
+    // ── 1. Clip everything to the rounded rect ────────────────────────────────
+    canvas.save();
+    canvas.clipRRect(rr);
+
+    // ── 2. Full navy background ───────────────────────────────────────────────
+    canvas.drawRect(bounds, Paint()..color = _navy);
+
+    // ── 3. Cream right portion via diagonal swoosh clip ───────────────────────
+    // The swoosh goes from (12%, 92%) → curve control → (88%, 8%)
+    final creamPath = Path()
+      ..moveTo(w * 0.12, h)        // bottom anchor
+      ..quadraticBezierTo(         // smooth diagonal curve
+          w * 0.55, h * 0.55,     // control point (centre-right)
+          w,        h * 0.0)      // end at top-right corner
+      ..lineTo(w, h)               // right edge down
+      ..close();
+    canvas.drawPath(creamPath, Paint()..color = _cream);
+
+    // ── 4. Small dot at swoosh start (gold) ───────────────────────────────────
+    canvas.drawCircle(
+      Offset(w * 0.15, h * 0.86),
+      w * 0.045,
+      Paint()..color = _gold,
     );
 
-    // ── Navy fill with subtle gradient ───────────────────────────────────────
-    canvas.drawPath(
-      shield,
-      Paint()
-        ..shader = LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            const Color(0xFF2D2A6E),
-            _navy,
-            const Color(0xFF13114A),
-          ],
-          stops: const [0.0, 0.5, 1.0],
-        ).createShader(rect),
-    );
+    // ── 5. Bar chart in upper-right (navy bars on cream) ─────────────────────
+    final barPaint = Paint()..color = _navy;
+    final barW = w * 0.065;
+    final barGap = w * 0.032;
+    final barBaseY = h * 0.42;
+    final barHeights = [h * 0.10, h * 0.17, h * 0.26];
+    for (int i = 0; i < 3; i++) {
+      final bx = w * 0.62 + i * (barW + barGap);
+      final bh = barHeights[i];
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(bx, barBaseY - bh, barW, bh),
+          const Radius.circular(2),
+        ),
+        barPaint,
+      );
+    }
 
-    // ── Gold outer border ────────────────────────────────────────────────────
-    canvas.drawPath(
-      shield,
-      Paint()
-        ..color = _gold
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = w * 0.055,
-    );
-
-    // ── Inner gold divider line (horizontal, upper-third) ────────────────────
-    final divY = h * 0.34;
-    canvas.drawLine(
-      Offset(w * 0.12, divY),
-      Offset(w * 0.88, divY),
-      Paint()
-        ..color = _gold.withOpacity(0.55)
-        ..strokeWidth = w * 0.022,
-    );
-
-    // ── "S" initial (left, gold) ─────────────────────────────────────────────
+    // ── 6. "S" — large, gold, left side ──────────────────────────────────────
     final stp = TextPainter(
       text: TextSpan(
         text: 'S',
         style: GoogleFonts.inter(
           fontWeight: FontWeight.w900,
-          fontSize: w * 0.33,
-          color: _goldLight,
+          fontSize: w * 0.52,
+          color: _goldS,
           height: 1,
         ),
       ),
       textDirection: TextDirection.ltr,
     )..layout();
-    stp.paint(canvas, Offset(w * 0.08, divY + h * 0.04));
+    stp.paint(canvas, Offset(w * 0.04, h * 0.28));
 
-    // ── "A" initial (right, slightly offset, contrasting) ────────────────────
+    // ── 7. "A" — large, navy, right side ─────────────────────────────────────
     final atp = TextPainter(
       text: TextSpan(
         text: 'A',
         style: GoogleFonts.inter(
           fontWeight: FontWeight.w900,
-          fontSize: w * 0.30,
-          color: Colors.white.withOpacity(0.92),
+          fontSize: w * 0.46,
+          color: _navy,
           height: 1,
         ),
       ),
       textDirection: TextDirection.ltr,
     )..layout();
-    atp.paint(canvas, Offset(w * 0.52, divY + h * 0.05));
+    atp.paint(canvas, Offset(w * 0.50, h * 0.38));
 
-    // ── Small gold gear dot at bottom-center ─────────────────────────────────
-    final cx = w * 0.50;
-    final cy = h * 0.88;
-    final r = w * 0.06;
-    canvas.drawCircle(Offset(cx, cy), r, Paint()..color = _gold);
-    canvas.drawCircle(
-      Offset(cx, cy),
-      r * 0.52,
-      Paint()..color = _navy,
-    );
+    canvas.restore();
 
-    // ── Top crown / chevron ───────────────────────────────────────────────────
-    final crown = Path()
-      ..moveTo(w * 0.30, h * 0.18)
-      ..lineTo(w * 0.50, h * 0.07)
-      ..lineTo(w * 0.70, h * 0.18);
-    canvas.drawPath(
-      crown,
+    // ── 8. Gold border (drawn outside clip so it sits on top cleanly) ─────────
+    canvas.drawRRect(
+      rr,
       Paint()
         ..color = _gold
         ..style = PaintingStyle.stroke
-        ..strokeWidth = w * 0.038
-        ..strokeCap = StrokeCap.round
-        ..strokeJoin = StrokeJoin.round,
+        ..strokeWidth = w * 0.055,
     );
   }
 

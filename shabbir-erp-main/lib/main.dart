@@ -15,6 +15,7 @@ import 'screens/pattern_lock_screen.dart';
 import 'services/auth_service.dart';
 import 'services/locale_service.dart';
 import 'services/security_service.dart';
+import 'services/supabase_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -25,6 +26,10 @@ void main() async {
   } catch (_) {
     firebaseReady = false;
   }
+
+  try {
+    await SupabaseService.initialize();
+  } catch (_) {}
 
   await LocaleService.instance.load();
 

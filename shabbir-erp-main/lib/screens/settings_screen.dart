@@ -9,6 +9,7 @@ import '../services/backup_service.dart';
 import '../services/github_gist_service.dart';
 import '../services/locale_service.dart';
 import '../services/security_service.dart';
+import '../services/supabase_service.dart';
 import '../widgets/app_header.dart';
 import 'pattern_lock_screen.dart';
 
@@ -25,11 +26,14 @@ class SettingsScreenState extends State<SettingsScreen> {  // ignore: library_pr
   bool _loadingRestoreLocal = false;
   bool _loadingGistBackup = false;
   bool _loadingGistRestore = false;
+  bool _loadingSupabaseSync = false;
+  bool _loadingSupabaseRestore = false;
   bool _loadingLogout = false;
   String _offlineName = 'User';
   String _savedGistId = '';
   DateTime? _lastBackupDate;
   bool _backupNeeded = false;
+  DateTime? _lastSupabaseSync;
 
   @override
   void initState() {
@@ -43,6 +47,7 @@ class SettingsScreenState extends State<SettingsScreen> {  // ignore: library_pr
     final prefs = await SharedPreferences.getInstance();
     final lastBackup = await BackupService.instance.lastBackupDate();
     final needed = await BackupService.instance.isBackupNeeded();
+    final lastSyncMs = prefs.getInt('supabase_last_sync');
     if (mounted) {
       setState(() {
         _patternEnabled = enabled && hasPattern;
@@ -50,6 +55,9 @@ class SettingsScreenState extends State<SettingsScreen> {  // ignore: library_pr
         _savedGistId = prefs.getString('gist_id') ?? '';
         _lastBackupDate = lastBackup;
         _backupNeeded = needed;
+        _lastSupabaseSync = lastSyncMs != null
+            ? DateTime.fromMillisecondsSinceEpoch(lastSyncMs)
+            : null;
       });
     }
   }
@@ -177,6 +185,77 @@ class SettingsScreenState extends State<SettingsScreen> {  // ignore: library_pr
         ],
       ),
     );
+  }
+
+  // ── Supabase Sync ──────────────────────────────────────────────────────────
+  Future<void> _supabaseSync() async {
+    setState(() => _loadingSupabaseSync = true);
+    try {
+      final erp = context.read<ERPProvider>();
+      await SupabaseService.instance.pushAll(
+        parties: erp.parties.toList(),
+        items: erp.inventory.toList(),
+        transactions: erp.transactions.toList(),
+      );
+      final prefs = await SharedPreferences.getInstance();
+      final now = DateTime.now();
+      await prefs.setInt('supabase_last_sync', now.millisecondsSinceEpoch);
+      if (mounted) setState(() => _lastSupabaseSync = now);
+      _snack('Data Supabase par sync ho gaya!');
+    } catch (e) {
+      _snack('Sync nahi hua: ${e.toString().replaceAll("Exception:", "").trim()}', error: true);
+    } finally {
+      if (mounted) setState(() => _loadingSupabaseSync = false);
+    }
+  }
+
+  Future<void> _supabaseRestore() async {
+    final mode = await _showRestoreModeDialog();
+    if (mode == null) return;
+    setState(() => _loadingSupabaseRestore = true);
+    try {
+      final pulled = await SupabaseService.instance.pullAll();
+      final parties = pulled['parties'] as List;
+      final items = pulled['stock_items'] as List;
+      final txs = pulled['transactions'] as List;
+      if (parties.isEmpty && items.isEmpty && txs.isEmpty) {
+        _snack('Supabase par koi data nahi mila', error: true);
+        return;
+      }
+      final db = await _buildExportMap(parties, items, txs);
+      if (mode == RestoreMode.replace) {
+        await context.read<ERPProvider>().importFromSupabase(db);
+      } else {
+        await context.read<ERPProvider>().mergeFromSupabase(db);
+      }
+      if (mounted) await context.read<ERPProvider>().reload();
+      _snack(mode == RestoreMode.merge
+          ? 'Supabase data merge ho gaya!'
+          : 'Supabase data restore ho gaya!');
+    } catch (e) {
+      _snack('Restore nahi hua: ${e.toString().replaceAll("Exception:", "").trim()}', error: true);
+    } finally {
+      if (mounted) setState(() => _loadingSupabaseRestore = false);
+    }
+  }
+
+  Map<String, dynamic> _buildExportMap(List parties, List items, List txs) {
+    return {
+      'version': 1,
+      'parties': parties.map((p) => (p as dynamic).toMap()).toList(),
+      'stock_items': items.map((i) => (i as dynamic).toMap()).toList(),
+      'transactions': txs.map((t) => (t as dynamic).toMap()).toList(),
+    };
+  }
+
+  String _formatSyncDate(DateTime? d) {
+    if (d == null) return 'Kabhi nahi';
+    final now = DateTime.now();
+    final diff = now.difference(d);
+    if (diff.inMinutes < 1) return 'Abhi';
+    if (diff.inHours < 1) return '${diff.inMinutes} min pehle';
+    if (diff.inDays < 1) return '${diff.inHours} ghante pehle';
+    return '${diff.inDays} din pehle';
   }
 
   // ── GitHub Gist Backup ─────────────────────────────────────────────────────
@@ -530,6 +609,41 @@ class SettingsScreenState extends State<SettingsScreen> {  // ignore: library_pr
             ),
             _Tile(icon: Icons.upload_outlined, title: isUrdu ? 'ڈیوائس پر بیک اپ' : 'Device pe Backup', subtitle: isUrdu ? 'JSON فائل ڈاؤن لوڈ کریں' : 'JSON file download karo', loading: _loadingBackupLocal, onTap: _backupLocal),
             _Tile(icon: Icons.download_outlined, title: isUrdu ? 'ڈیوائس سے ریسٹور' : 'Device se Restore', subtitle: isUrdu ? 'JSON فائل سے ڈیٹا واپس لائیں' : 'JSON file se data wapas lao', loading: _loadingRestoreLocal, onTap: _restoreLocal),
+            const SizedBox(height: 24),
+
+            // ── Supabase Cloud Sync ──
+            _SectionLabel(isUrdu ? 'کلاؤڈ سنک (Supabase)' : 'Cloud Sync (Supabase)'),
+            Container(
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEFF6FF),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFBFDBFE)),
+              ),
+              child: Row(children: [
+                const Icon(Icons.cloud_done_outlined, size: 15, color: Color(0xFF1D4ED8)),
+                const SizedBox(width: 8),
+                Expanded(child: Text(
+                  '${isUrdu ? "آخری سنک" : "Aakhri sync"}: ${_formatSyncDate(_lastSupabaseSync)}',
+                  style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF1D4ED8), fontWeight: FontWeight.w500),
+                )),
+              ]),
+            ),
+            _Tile(
+              icon: Icons.cloud_upload_outlined,
+              title: isUrdu ? 'Supabase پر سنک کریں' : 'Supabase pe Sync Karo',
+              subtitle: isUrdu ? 'تمام ڈیٹا کلاؤڈ پر محفوظ کریں' : 'Sab data cloud par save karo',
+              loading: _loadingSupabaseSync,
+              onTap: _supabaseSync,
+            ),
+            _Tile(
+              icon: Icons.cloud_download_outlined,
+              title: isUrdu ? 'Supabase سے ریسٹور' : 'Supabase se Restore',
+              subtitle: isUrdu ? 'کلاؤڈ سے ڈیٹا واپس لائیں' : 'Cloud se data wapas lao',
+              loading: _loadingSupabaseRestore,
+              onTap: _supabaseRestore,
+            ),
             const SizedBox(height: 24),
 
             // ── GitHub Gist Backup ──
